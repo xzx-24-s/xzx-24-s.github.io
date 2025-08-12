@@ -10,10 +10,14 @@
       top: 10px;
       left: 10px;
       z-index: 10;
-      background: rgba(255,255,255,0.9);
-      padding: 8px;
-      border-radius: 6px;
-      font-size: 14px;
+      background: rgba(255,255,255,0.95);
+      padding: 12px 18px;  /* 按钮更大 */
+      border-radius: 8px;
+      font-size: 16px;     /* 字体更大 */
+      font-weight: bold;   /* 粗体 */
+      cursor: pointer;     /* 鼠标悬停变小手 */
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
   </style>
   <script type="importmap">
@@ -113,7 +117,6 @@
       document.getElementById('fileInput').value = ''; // 可连续上传相同模型
     }
 
-    // 文件上传事件
     document.getElementById('fileInput').addEventListener('change', (event) => {
       const file = event.target.files[0];
       if (file && file.name.toLowerCase().endsWith('.glb')) {
@@ -123,13 +126,11 @@
       }
     });
 
-    // 渲染循环
     renderer.setAnimationLoop(() => {
       controls.update();
       renderer.render(scene, camera);
     });
 
-    // 响应窗口
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
