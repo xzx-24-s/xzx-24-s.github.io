@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GLB 本地模型加载</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #fileInput {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      background: rgba(255,255,255,0.95);
+      padding: 12px 18px;  /* 按钮更大 */
+      border-radius: 8px;
+      font-size: 16px;     /* 字体更大 */
+      font-weight: bold;   /* 粗体 */
+      cursor: pointer;     /* 鼠标悬停变小手 */
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.174.0/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.174.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- 上传本地 .glb 文件 -->
+  <input type="file" id="fileInput" accept=".glb" />
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(5, 10, 7.5);
+    scene.add(directionalLight);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = false;
+    controls.minDistance = 0.1;
+    controls.maxDistance = 100;
+    controls.rotateSpeed = 1;
+    controls.minPolarAngle = 0;
+    controls.maxPolarAngle = 2 * Math.PI;
+
+    const loader = new GLTFLoader();
+    let currentModel = null;
+
+    function clearModel() {
+      if (currentModel) {
+        scene.remove(currentModel);
+        currentModel.traverse(child => {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        });
+        currentModel = null;
+      }
+    }
+
+    function centerAndScaleModel(model) {
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const center = box.getCenter(new THREE.Vector3());
+
+      const scaleFactor = 2.0 / maxDim;
+      model.scale.setScalar(scaleFactor);
+      model.position.sub(center.multiplyScalar(scaleFactor));
+
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+
+    function loadModelFromFile(file) {
+      clearModel();
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const arrayBuffer = e.target.result;
+        loader.parse(arrayBuffer, '', (gltf) => {
+          const model = gltf.scene;
+          centerAndScaleModel(model);
+          scene.add(model);
+          currentModel = model;
+        }, (error) => {
+          console.error('本地模型解析失败:', error);
+        });
+      };
+      reader.readAsArrayBuffer(file);
+      document.getElementById('fileInput').value = ''; // 可连续上传相同模型
+    }
+
+    document.getElementById('fileInput').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file && file.name.toLowerCase().endsWith('.glb')) {
+        loadModelFromFile(file);
+      } else {
+        alert('请上传 .glb 格式的模型文件');
+      }
+    });
+
+    renderer.setAnimationLoop(() => {
+      controls.update();
+      renderer.render(scene, camera);
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
